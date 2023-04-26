@@ -1,0 +1,48 @@
+#!/bin/bash
+
+function update_distribution {
+  cd "${HOME}" || exit 1
+  if [ -d "${HOME}/proot-distro" ]; then
+    rm -rf "${HOME}/proot-distro"
+  fi
+  git clone https://github.com/BDhaCkers009/proot-distro "${HOME}/proot-distro"
+  cd "${HOME}/proot-distro" || exit 1
+  bash install.sh
+  proot-distro remove dname
+  proot-distro clear-cache
+  proot-distro install dname
+  rm -rf "${HOME}/proot-distro"
+}
+
+if [[ "$#" -eq 1 && "$1" == "--update" ]]; then
+  echo "Your dname is going to be wiped and reset"
+  read -rp "Do you want to continue [Y/n] " yn
+  if [[ "$yn" == [Yy] ]]; then
+    update_distribution
+    if [[ "$?" -eq 0 ]]; then
+      echo "Your dname is updated and wiped successfully"
+      echo "You can run your dname distro using command: dname"
+      exit 0
+    else
+      echo "Error updating dname. Please rerun this process"
+      exit 1
+    fi
+  else
+    echo "Abort updating dname"
+    exit 0
+  fi
+elif [[ "$#" -ge 2 && "$1" == "--exec" ]]; then
+  if [[ "$#" -ge 4 && "${@: -2}" == "--user" ]]; then
+    username="${@: -1}"
+    proot-distro login dname --user "$username" --bind /dev/null:/proc/sys/kernel/cap_last_cap -- "${@:2:$#-4}" || exit 1
+  else
+    proot-distro login dname --bind /dev/null:/proc/sys/kernel/cap_last_cap -- "${@:2}" || exit 1
+  fi
+elif [[ "$#" -eq 2 && "$1" == "--user" ]]; then
+  proot-distro login dname --user "$2" --bind /dev/null:/proc/sys/kernel/cap_last_cap || exit 1
+elif [[ "$#" -eq 0 ]]; then
+  proot-distro login dname --bind /dev/null:/proc/sys/kernel/cap_last_cap || exit 1
+else
+  echo "Usage: $0 [--update] [--exec command arg1 arg2 ... --user username] [--user username]"
+  exit 1
+fi
